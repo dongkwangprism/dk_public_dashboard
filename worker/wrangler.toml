@@ -1,0 +1,12 @@
+name = "market-dashboard-worker"
+main = "src/index.ts"
+compatibility_date = "2026-06-29"
+
+[vars]
+CACHE_TTL_SECONDS = "86400"
+
+# 프론트엔드↔pipeline 공용 키워드를 사용하려면 KV를 생성한 뒤 아래 주석을 풀고 실제 ID를 입력한다.
+# npx wrangler kv namespace create pipeline-keywords --binding DASHBOARD_CACHE --update-config
+# [[kv_namespaces]]
+# binding = "DASHBOARD_CACHE"
+# id = "실제_KV_NAMESPACE_ID"

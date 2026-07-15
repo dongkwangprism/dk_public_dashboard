@@ -1,0 +1,16 @@
+{
+  "name": "g2b-delivery-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "조달청 종합쇼핑몰 납품요구 물품 내역(UI-ADOXAA-038R) 수집 파이프라인",
+  "scripts": {
+    "once": "node src/run.mjs",
+    "schedule": "node src/schedule.mjs",
+    "ingest": "node src/ingestCsv.mjs"
+  },
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "playwright": "^1.49.0"
+  }
+}

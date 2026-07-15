@@ -1,0 +1,58 @@
+name: Update delivery snapshot & redeploy
+
+on:
+  schedule:
+    # 매월 1일 09:00 KST (UTC 00:00). pipeline 자체가 45일 창 + upsert라 하루 이틀 오차는 문제없음.
+    - cron: "0 0 1 * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+
+      - name: Install pipeline deps
+        working-directory: pipeline
+        run: npm ci
+
+      - name: Install headless Chromium
+        working-directory: pipeline
+        run: npx playwright install --with-deps chromium
+
+      - name: Run pipeline (scrape -> SQLite upsert -> delivery.json)
+        working-directory: pipeline
+        env:
+          PIPELINE_CONFIG_URL: ${{ secrets.PIPELINE_CONFIG_URL }}
+          PIPELINE_API_TOKEN: ${{ secrets.PIPELINE_API_TOKEN }}
+        run: npm run once
+
+      - name: Commit updated snapshot + DB
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/public/delivery.json pipeline/data/delivery.sqlite
+          git diff --cached --quiet || git commit -m "chore: update delivery snapshot"
+          git push
+
+      - name: Install frontend deps & build
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy to Cloudflare Pages
+        working-directory: frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy dist --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT }}

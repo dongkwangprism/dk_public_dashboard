@@ -1,0 +1,13 @@
+[project]
+name = "public-data-fetch"
+version = "0.1.0"
+description = "Daily public data email automation scaffold"
+requires-python = ">=3.11"
+dependencies = [
+    "APScheduler>=3.10.4",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
+]
+
+[project.scripts]
+public-data-fetch = "public_data_fetch.main:main"
