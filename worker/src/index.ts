@@ -3,9 +3,21 @@ import { getDashboard } from "./routes/dashboard";
 import { getLofinBudgets } from "./routes/lofin";
 import { getMas } from "./routes/mas";
 import { getAwards, getContracts, getOrderPlans, getPrices, getSpecs, getStats } from "./routes/procurement";
+import {
+  getPipelineKeywords,
+  getSalesNotes,
+  patchSalesNotes,
+  putPipelineKeywords,
+} from "./routes/sharedState";
 import { DataGoKrError } from "./services/dataGoKrClient";
 import type { Env } from "./types/api";
 import { corsHeaders, json } from "./utils/response";
+
+// 공유 상태 경로만 쓰기를 허용한다. 나머지는 조달 API 조회라 GET 전용이다.
+const WRITE_METHODS: Record<string, string> = {
+  "/api/pipeline-keywords": "PUT",
+  "/api/sales-notes": "PATCH",
+};
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -15,9 +27,7 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    const isPipelineKeywordsRoute = url.pathname === "/api/pipeline-keywords";
-
-    if (request.method !== "GET" && !(isPipelineKeywordsRoute && request.method === "PUT")) {
+    if (request.method !== "GET" && request.method !== WRITE_METHODS[url.pathname]) {
       return json({ ok: false, error: "Method not allowed" }, 405);
     }
 
@@ -26,10 +36,16 @@ export default {
         return json({ ok: false, error: "Unauthorized" }, 401);
       }
 
-      if (isPipelineKeywordsRoute) {
+      if (url.pathname === "/api/pipeline-keywords") {
         return request.method === "PUT"
           ? json(await putPipelineKeywords(request, env))
           : json(await getPipelineKeywords(env));
+      }
+
+      if (url.pathname === "/api/sales-notes") {
+        return request.method === "PATCH"
+          ? json(await patchSalesNotes(request, env))
+          : json(await getSalesNotes(env));
       }
 
       const endpoint = url.searchParams.get("endpoint");
@@ -116,52 +132,6 @@ export default {
     }
   },
 };
-
-const PIPELINE_KEYWORDS_KV_KEY = "settings:pipeline-keywords:v1";
-
-async function getPipelineKeywords(env: Env) {
-  if (!env.DASHBOARD_CACHE) {
-    return { ok: true, configured: false, companies: null, updatedAt: null };
-  }
-  const saved = await env.DASHBOARD_CACHE.get(PIPELINE_KEYWORDS_KV_KEY, "json") as {
-    companies?: Record<string, string[]>;
-    updatedAt?: string;
-  } | null;
-  return {
-    ok: true,
-    configured: true,
-    companies: saved?.companies || null,
-    updatedAt: saved?.updatedAt || null,
-  };
-}
-
-async function putPipelineKeywords(request: Request, env: Env) {
-  if (!env.DASHBOARD_CACHE) {
-    throw new DataGoKrError("DASHBOARD_CACHE KV binding is not configured", 503);
-  }
-  const body = await request.json() as { companies?: Record<string, unknown> };
-  const companies = normalizePipelineCompanies(body?.companies);
-  const value = { companies, updatedAt: new Date().toISOString() };
-  await env.DASHBOARD_CACHE.put(PIPELINE_KEYWORDS_KV_KEY, JSON.stringify(value));
-  return { ok: true, configured: true, ...value };
-}
-
-function normalizePipelineCompanies(value: Record<string, unknown> | undefined) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new DataGoKrError("companies object is required", 400);
-  }
-  const companies: Record<string, string[]> = {};
-  for (const [companyId, rawKeywords] of Object.entries(value)) {
-    if (!/^[a-z0-9_-]{1,40}$/i.test(companyId) || !Array.isArray(rawKeywords)) continue;
-    companies[companyId] = [...new Set(
-      rawKeywords.map((keyword) => String(keyword || "").trim()).filter((keyword) => keyword.length > 0 && keyword.length <= 80)
-    )].slice(0, 50);
-  }
-  if (!Object.keys(companies).length) {
-    throw new DataGoKrError("at least one company keyword list is required", 400);
-  }
-  return companies;
-}
 
 function isAuthorized(request: Request, env: Env, url: URL) {
   if (!env.API_ACCESS_TOKEN) return true;

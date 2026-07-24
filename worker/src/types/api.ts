@@ -5,7 +5,8 @@ export interface Env {
   LOFIN_API_PATH?: string;
   API_ACCESS_TOKEN?: string;
   CACHE_TTL_SECONDS?: string;
-  DASHBOARD_CACHE?: KVNamespace;
+  // 키워드·영업 메모 공유 저장소. 바인딩이 없으면 각 브라우저 로컬 저장으로만 동작한다.
+  DASHBOARD_DB?: D1Database;
 }
 
 export interface NormalizedContract {

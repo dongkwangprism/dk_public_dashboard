@@ -14,7 +14,9 @@ import {
   ApiResponseError,
   fetchPipelineKeywordConfig,
   fetchProcurementBundle,
+  fetchSalesNotes,
   savePipelineKeywordConfig,
+  saveSalesNotes,
 } from "./src/services/api.js";
 
 const COMPANIES = {
@@ -55,7 +57,13 @@ const COLORS = {
 const CHART_COLORS = ["#2563EB", "#0F766E", "#B45309", "#DC2626", "#7C3AED", "#15803D", "#475569"];
 const UNKNOWN_REGION = "미분류";
 const DATA_CACHE_PREFIX = "g2b-procurement-cache-v6.3";
+// 버전이 바뀐 옛 캐시까지 찾아내 지우기 위한 접두사 — 읽히지 않는 캐시가 용량만 차지한다
+const DATA_CACHE_FAMILY_PREFIX = "g2b-procurement-cache";
 const DATA_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+// 캐시 키에 키워드 목록이 들어가므로 키워드를 고칠 때마다 새 항목이 생긴다.
+// 정리하지 않으면 localStorage 용량을 다 써버려 키워드·영업 메모 저장이 실패한다.
+// 회사 전환(제일테크 ↔ 동광프리즘) 왕복 정도만 캐시가 남도록 2개로 제한한다.
+const MAX_DATA_CACHE_ENTRIES = 2;
 const INITIAL_ENDPOINTS = ["bids"];
 const TAB_ENDPOINTS = {
   bids: ["bids"],
@@ -156,6 +164,8 @@ function App() {
   const [deliveryError, setDeliveryError] = useState("");
   const [deliveryLoaded, setDeliveryLoaded] = useState(false);
   const [selectedAnalysisBid, setSelectedAnalysisBid] = useState(null);
+  // 영업 메모는 탭을 옮겨도 유지되도록 App에서 한 번만 불러온다
+  const salesNotes = useSharedSalesNotes();
   const [staleEndpoints, setStaleEndpoints] = useState({}); // { endpoint: 원본 수신 시각 } — 만료 캐시로 채워진 endpoint
   const [fetchingEndpoints, setFetchingEndpoints] = useState([]); // 현재 요청이 호출 중인 endpoint — force 갱신은 loadedEndpoints를 유지하므로 이것 없이는 로딩 표시가 사라진다
   const [manualRefreshing, setManualRefreshing] = useState(false);
@@ -380,20 +390,20 @@ function App() {
       .then(async (remote) => {
         if (!active) return;
         if (!remote.configured) {
-          setKeywordSyncStatus("pipeline 공용 키워드: KV 미연결");
+          setKeywordSyncStatus("서버 미연결 · 이 브라우저에만 저장됩니다");
           return;
         }
         if (remote.companies) {
           setKeywordMap((current) => mergeRemoteKeywordCompanies(current, remote.companies));
-          setKeywordSyncStatus(`pipeline 키워드 동기화됨${remote.updatedAt ? ` · ${formatDateTime(remote.updatedAt)}` : ""}`);
+          setKeywordSyncStatus(`공유 중${remote.updatedAt ? ` · 최근 수정 ${formatDateTime(remote.updatedAt)}` : ""}`);
           return;
         }
         const companies = pipelineKeywordCompanies(safeKeywordMap);
         await savePipelineKeywordConfig(companies);
-        if (active) setKeywordSyncStatus("pipeline 공용 키워드 초기화됨");
+        if (active) setKeywordSyncStatus("공유 시작됨 · 이 목록을 서버에 올렸습니다");
       })
       .catch((error) => {
-        if (active) setKeywordSyncStatus(`pipeline 키워드는 로컬에만 저장됨 · ${formatLoadError(error)}`);
+        if (active) setKeywordSyncStatus(`서버 연결 실패 · 이 브라우저에만 저장됨 · ${formatLoadError(error)}`);
       });
     return () => {
       active = false;
@@ -562,7 +572,14 @@ function App() {
                 />
               )}
               {tab === "plans" && <PlansTab plans={data.plans} specs={data.specs} planPending={pendingEndpoints.includes("plan")} specPending={pendingEndpoints.includes("spec")} />}
-              {tab === "regions" && <BudgetTab rows={data.budgets} pending={pendingEndpoints.includes("lofin")} companyId={safeCompanyId} />}
+              {tab === "regions" && (
+                <BudgetTab
+                  rows={data.budgets}
+                  pending={pendingEndpoints.includes("lofin")}
+                  companyId={safeCompanyId}
+                  salesNotes={salesNotes}
+                />
+              )}
               {tab === "competitors" && (
                 <CompetitorsTab
                   rows={data.competitors}
@@ -1060,12 +1077,12 @@ function applyBudgetPreset(rows, preset) {
   return [...rows].sort((a, b) => b.lagIndex - a.lagIndex);
 }
 
-function BudgetTab({ rows, pending, companyId }) {
+function BudgetTab({ rows, pending, companyId, salesNotes }) {
   const [preset, setPreset] = useStoredState("g2b-budget-preset", "all");
   const [regionFilter, setRegionFilter] = useState("전체");
   const [uncontactedOnly, setUncontactedOnly] = useState(false);
   const [productOnly, setProductOnly] = useStoredState("g2b-budget-product-only", true);
-  const [notes, setNotes] = useStoredState("g2b-sales-notes", {});
+  const { notes, saveNote: saveSharedNote, syncStatus: noteSyncStatus } = salesNotes;
   const [openNoteKey, setOpenNoteKey] = useState("");
 
   if (!rows.length) {
@@ -1089,20 +1106,8 @@ function BudgetTab({ rows, pending, companyId }) {
     : 0;
 
   const noteKeyFor = (row) => `${companyId}|${row.org}|${row.bizName}`;
-  const noteFor = (row) => notes[noteKeyFor(row)] || { status: "none", memo: "", lastContact: "" };
-  const saveNote = (row, patch) => {
-    const key = noteKeyFor(row);
-    const current = noteFor(row);
-    setNotes({
-      ...notes,
-      [key]: {
-        ...current,
-        ...patch,
-        company: companyId,
-        lastContact: new Date().toISOString().slice(0, 10),
-      },
-    });
-  };
+  const noteFor = (row) => notes[noteKeyFor(row)] || EMPTY_NOTE;
+  const saveNote = (row, patch) => saveSharedNote(noteKeyFor(row), patch, companyId);
 
   const regionsPresent = ["전체", ...new Set(scopedRows.map((row) => row.region))];
   let visibleRows = applyBudgetPreset(scopedRows, preset);
@@ -1207,6 +1212,7 @@ function BudgetTab({ rows, pending, companyId }) {
                             placeholder="담당자명, 통화 내용, 특이사항"
                           />
                           <span style={styles.cellSub}>최근 접촉: {note.lastContact || "-"}</span>
+                          <span style={styles.cellSub}>{noteSyncStatus}</span>
                         </div>
                       </td>
                     </tr>
@@ -2042,11 +2048,77 @@ function formatDataAge(fetchedAt) {
   return `${Math.floor(hours / 24)}일 전`;
 }
 
+function dataCacheKeys() {
+  const keys = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (key && key.startsWith(DATA_CACHE_FAMILY_PREFIX)) keys.push(key);
+  }
+  return keys;
+}
+
+function dataCacheAge(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || "{}")?.cachedAt || 0;
+  } catch {
+    return 0;
+  }
+}
+
+// 조달 데이터 캐시는 언제든 다시 받을 수 있다. 사용자가 직접 입력한 키워드·영업 메모가
+// 저장 공간을 잃지 않도록 오래된 캐시부터 버린다.
+function pruneDataCache(keep = "") {
+  const survivors = [];
+  for (const key of dataCacheKeys()) {
+    if (key === keep) continue;
+    if (!key.startsWith(DATA_CACHE_PREFIX)) {
+      // 다른 버전의 캐시는 어차피 읽지 않는다
+      localStorage.removeItem(key);
+      continue;
+    }
+    survivors.push({ key, cachedAt: dataCacheAge(key) });
+  }
+  const budget = Math.max(0, MAX_DATA_CACHE_ENTRIES - (keep ? 1 : 0));
+  survivors
+    .sort((a, b) => b.cachedAt - a.cachedAt)
+    .slice(budget)
+    .forEach(({ key }) => localStorage.removeItem(key));
+}
+
+function dropAllDataCache() {
+  try {
+    dataCacheKeys().forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // 정리에 실패해도 호출자가 할 수 있는 일은 없다
+  }
+}
+
 function writeDataCache(key, value) {
   try {
+    pruneDataCache(key);
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
     // Cache writes are best-effort. The live data is already on screen.
+    // 실패했다면 용량이 부족하다는 뜻이므로, 사용자 입력이 쓸 자리를 남겨두고 물러난다.
+    dropAllDataCache();
+  }
+}
+
+// 키워드·영업 메모처럼 사용자가 직접 넣은 값은 다시 만들 수 없다.
+// 캐시가 용량을 다 써서 저장이 막히면 캐시를 버리고 다시 시도한다.
+function persistUserState(key, value) {
+  const payload = JSON.stringify(value);
+  try {
+    localStorage.setItem(key, payload);
+    return true;
+  } catch {
+    dropAllDataCache();
+    try {
+      localStorage.setItem(key, payload);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -2115,12 +2187,12 @@ function mergeRemoteKeywordCompanies(current, companies) {
 }
 
 async function syncPipelineKeywords(keywordMap, setStatus) {
-  setStatus("pipeline 키워드 동기화 중…");
+  setStatus("저장 중…");
   try {
     const saved = await savePipelineKeywordConfig(pipelineKeywordCompanies(keywordMap));
-    setStatus(`pipeline 키워드 동기화됨${saved.updatedAt ? ` · ${formatDateTime(saved.updatedAt)}` : ""}`);
+    setStatus(`공유 저장됨${saved.updatedAt ? ` · ${formatDateTime(saved.updatedAt)}` : ""}`);
   } catch (error) {
-    setStatus(`pipeline 동기화 실패 · ${formatLoadError(error)}`);
+    setStatus(`공유 저장 실패 · 이 브라우저에만 저장됨 · ${formatLoadError(error)}`);
   }
 }
 
@@ -2160,9 +2232,98 @@ function useStoredState(key, initialValue) {
     }
   });
   useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
+    persistUserState(key, value);
   }, [key, value]);
   return [value, setValue];
+}
+
+const EMPTY_NOTE = { status: "none", memo: "", lastContact: "" };
+// 타자 한 글자마다 서버를 부르지 않는다. 입력이 멈추면 그때 한 번에 보낸다.
+const NOTE_SYNC_DEBOUNCE_MS = 1000;
+
+// 영업 메모는 접속한 모든 사람이 같이 본다.
+// 화면 표시는 로컬 상태로 즉시 반영하고(끊겨도 입력은 남는다), 서버에는 바뀐 항목만 보낸다.
+function useSharedSalesNotes() {
+  const [notes, setNotes] = useStoredState("g2b-sales-notes", {});
+  const [syncStatus, setSyncStatus] = useState("영업 메모 불러오는 중…");
+  const pendingRef = useRef({}); // 아직 서버에 못 보낸 변경분
+  const timerRef = useRef(null);
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+
+  const flush = useCallback(async () => {
+    const payload = pendingRef.current;
+    pendingRef.current = {};
+    if (!Object.keys(payload).length) return;
+    try {
+      const saved = await saveSalesNotes(payload);
+      setSyncStatus(`공유 저장됨${saved.updatedAt ? ` · ${formatDateTime(saved.updatedAt)}` : ""}`);
+    } catch (error) {
+      // 실패한 변경분은 다시 줄 세운다. 로컬에는 이미 남아 있으니 입력이 사라지지는 않는다.
+      pendingRef.current = { ...payload, ...pendingRef.current };
+      setSyncStatus(`공유 저장 실패 · 이 브라우저에만 저장됨 · ${formatLoadError(error)}`);
+    }
+  }, []);
+
+  // 접속할 때마다 서버의 최신 상태를 받아온다
+  useEffect(() => {
+    let active = true;
+    fetchSalesNotes()
+      .then((remote) => {
+        if (!active) return;
+        if (!remote.configured) {
+          setSyncStatus("서버 미연결 · 이 브라우저에만 저장됩니다");
+          return;
+        }
+        // 서버에 없는 로컬 메모는 아직 공유된 적 없는 것이다 — 살려두고 올려보낸다.
+        // (이전 버전에서 이 브라우저에만 저장돼 있던 메모가 여기서 팀에 합류한다)
+        const unsent = Object.entries(notesRef.current).filter(
+          ([key, note]) => !remote.notes?.[key] && (note.memo || (note.status && note.status !== "none"))
+        );
+        setNotes((current) => ({ ...current, ...(remote.notes || {}) }));
+        if (unsent.length) {
+          pendingRef.current = { ...Object.fromEntries(unsent), ...pendingRef.current };
+          flush();
+        }
+        setSyncStatus(`공유 중${remote.updatedAt ? ` · 최근 수정 ${formatDateTime(remote.updatedAt)}` : ""}`);
+      })
+      .catch((error) => {
+        if (active) setSyncStatus(`서버 연결 실패 · 이 브라우저에만 저장됨 · ${formatLoadError(error)}`);
+      });
+    return () => {
+      active = false;
+    };
+  }, [flush]);
+
+  // 탭을 닫거나 숨길 때 아직 못 보낸 입력을 흘려보낸다
+  useEffect(() => {
+    const handle = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", handle);
+    return () => {
+      document.removeEventListener("visibilitychange", handle);
+      flush();
+    };
+  }, [flush]);
+
+  const saveNote = useCallback((key, patch, companyId) => {
+    setNotes((current) => {
+      const next = {
+        ...(current[key] || EMPTY_NOTE),
+        ...patch,
+        company: companyId,
+        lastContact: new Date().toISOString().slice(0, 10),
+      };
+      pendingRef.current = { ...pendingRef.current, [key]: next };
+      return { ...current, [key]: next };
+    });
+    setSyncStatus("저장 중…");
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(flush, NOTE_SYNC_DEBOUNCE_MS);
+  }, [flush, setNotes]);
+
+  return { notes, saveNote, syncStatus };
 }
 
 function parseRegion(text) {

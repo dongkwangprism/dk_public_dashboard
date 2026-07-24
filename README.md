@@ -96,6 +96,24 @@ Cloudflare secret 등록:
 npx wrangler secret put DATA_GO_KR_API_KEY
 ```
 
+## 공유 상태 설정 (키워드 · 영업 메모)
+
+검색 키워드와 영업 메모는 D1에 저장되어 접속한 모든 사람이 같은 내용을 본다.
+D1을 연결하기 전까지는 각자 브라우저에만 저장되며, 대시보드에 "서버 미연결"로 표시된다.
+
+```bash
+cd worker
+npx wrangler d1 create market-dashboard          # 출력된 database_id 복사
+# wrangler.toml의 [[d1_databases]] 주석을 풀고 database_id 붙여넣기
+npx wrangler d1 execute market-dashboard --remote --file=./schema.sql
+npx wrangler deploy
+```
+
+| 경로 | 메서드 | 용도 |
+| --- | --- | --- |
+| `/api/pipeline-keywords` | GET / PUT | 회사별 검색 키워드 (pipeline도 이 API로 읽는다) |
+| `/api/sales-notes` | GET / PATCH | 영업 메모. PATCH는 바뀐 항목만 보내 다른 사람의 메모를 덮어쓰지 않는다 |
+
 ## 현재 구현 상태
 
 - `/api/health`: 정상 응답

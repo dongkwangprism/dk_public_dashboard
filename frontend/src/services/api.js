@@ -43,6 +43,19 @@ export async function savePipelineKeywordConfig(companies) {
   });
 }
 
+export async function fetchSalesNotes() {
+  return fetchWorkerPath("/api/sales-notes");
+}
+
+// 바뀐 메모만 보낸다 — 통째로 보내면 다른 사람이 방금 저장한 메모를 덮어쓴다
+export async function saveSalesNotes(notes) {
+  return fetchWorkerPath("/api/sales-notes", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ notes }),
+  });
+}
+
 async function fetchWorkerPath(path, init = {}) {
   let lastError;
   const baseUrls = preferredBaseUrl
@@ -55,7 +68,7 @@ async function fetchWorkerPath(path, init = {}) {
         ...(API_ACCESS_TOKEN ? { "x-api-token": API_ACCESS_TOKEN } : {}),
       };
       const res = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, { ...init, headers });
-      if (!res.ok) throw await toApiError("pipeline-keywords", res);
+      if (!res.ok) throw await toApiError(path, res);
       preferredBaseUrl = baseUrl;
       return res.json();
     } catch (error) {
@@ -66,7 +79,7 @@ async function fetchWorkerPath(path, init = {}) {
       lastError = error;
     }
   }
-  throw lastError || new Error("pipeline keyword API failed");
+  throw lastError || new Error(`${path} API failed`);
 }
 
 async function fetchJsonWithFallback(endpoint, params) {
