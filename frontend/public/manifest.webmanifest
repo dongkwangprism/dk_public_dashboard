@@ -1,0 +1,23 @@
+{
+  "name": "나라장터 조사 대시보드",
+  "short_name": "조달 대시보드",
+  "description": "제일테크·동광프리즘 공공조달 현장 대시보드",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
