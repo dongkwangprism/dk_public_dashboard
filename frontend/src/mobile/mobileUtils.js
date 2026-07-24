@@ -1,4 +1,9 @@
 export const isMobileMediaQuery = "(max-width: 767px)";
+const MOBILE_TABS = new Set(["bids", "regions", "plans"]);
+
+export function normalizeMobileTab(tab) {
+  return MOBILE_TABS.has(tab) ? tab : "bids";
+}
 
 export function mobileDdayTone(dday) {
   if (dday <= 3) return "red";

@@ -18,6 +18,9 @@ import {
   savePipelineKeywordConfig,
   saveSalesNotes,
 } from "./src/services/api.js";
+import { MobileApp } from "./src/mobile/MobileApp.jsx";
+import { normalizeMobileTab } from "./src/mobile/mobileUtils.js";
+import { useIsMobile } from "./src/mobile/useIsMobile.js";
 
 const COMPANIES = {
   jeil: {
@@ -147,6 +150,7 @@ const PUBLIC_ORG_CATEGORIES = [
 ];
 
 function App() {
+  const isMobile = useIsMobile();
   const [companyId, setCompanyId] = useStoredState("g2b-company", "jeil");
   const [keywordMap, setKeywordMap] = useStoredState("g2b-keywords", COMPANIES);
   const [tab, setTab] = useState("bids");
@@ -508,6 +512,33 @@ function App() {
     setKeywordMap(nextMap);
     syncPipelineKeywords(nextMap, setKeywordSyncStatus);
   };
+
+  useEffect(() => {
+    if (isMobile && tab !== normalizeMobileTab(tab)) {
+      setTab("bids");
+    }
+  }, [isMobile, tab]);
+
+  if (isMobile) {
+    return (
+      <MobileApp
+        companyId={safeCompanyId}
+        companies={safeKeywordMap}
+        onCompanyChange={setCompanyId}
+        tab={tab}
+        onTabChange={setTab}
+        data={data}
+        visibleState={visibleState}
+        loading={loading}
+        onRefresh={() => loadData({ force: true, endpoints: TAB_ENDPOINTS[normalizeMobileTab(tab)] || INITIAL_ENDPOINTS })}
+        onAnalyze={(row) => {
+          setSelectedAnalysisBid(row);
+          window.setTimeout(() => loadData({ endpoints: ["awards"] }), 0);
+        }}
+        salesNotes={salesNotes}
+      />
+    );
+  }
 
   return (
     <div style={styles.page}>

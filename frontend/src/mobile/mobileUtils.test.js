@@ -4,6 +4,7 @@ import {
   mergeUpcomingRows,
   mobileBidOpacity,
   mobileDdayTone,
+  normalizeMobileTab,
 } from "./mobileUtils.js";
 
 describe("mobile UI helpers", () => {
@@ -31,5 +32,10 @@ describe("mobile UI helpers", () => {
       "plan:p1",
       "plan:p2",
     ]);
+  });
+
+  it("falls back to bids for desktop-only tabs", () => {
+    expect(normalizeMobileTab("regions")).toBe("regions");
+    expect(normalizeMobileTab("competitors")).toBe("bids");
   });
 });

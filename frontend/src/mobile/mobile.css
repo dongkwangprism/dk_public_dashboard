@@ -1,0 +1,353 @@
+:root {
+  color-scheme: light;
+}
+
+body:has(.mobile-app) {
+  margin: 0;
+  background: #f5f7fb;
+  overscroll-behavior-y: none;
+}
+
+.mobile-app {
+  min-height: 100dvh;
+  background: #f5f7fb;
+  color: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 8px;
+  background: rgba(245, 247, 251, 0.94);
+  backdrop-filter: blur(14px);
+}
+
+.mobile-header-kicker {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.mobile-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-title-row h1 {
+  margin: 2px 0 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.mobile-urgent,
+.mobile-dday,
+.mobile-kind,
+.mobile-grade {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mobile-urgent,
+.mobile-dday.is-red,
+.mobile-grade.is-now {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.mobile-dday.is-orange,
+.mobile-grade.is-active {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.mobile-dday.is-green,
+.mobile-grade.is-watch {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.mobile-grade.is-hold {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.mobile-kind.is-spec {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.mobile-kind.is-plan {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.mobile-icon-button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #dbe2ea;
+  border-radius: 13px;
+  background: #fff;
+  color: #2563eb;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.mobile-company-chips {
+  display: flex;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 16px 10px;
+}
+
+.mobile-company-chips button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mobile-company-chips button.is-active {
+  background: #fff;
+  color: #2563eb;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
+}
+
+.mobile-content {
+  padding: 2px 14px calc(82px + env(safe-area-inset-bottom));
+}
+
+.mobile-card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.mobile-card {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.mobile-bid-card {
+  cursor: pointer;
+}
+
+.mobile-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mobile-card h2,
+.mobile-card-heading h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.mobile-card > h2 {
+  margin-top: 10px;
+}
+
+.mobile-muted,
+.mobile-card-copy {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mobile-card-copy {
+  color: #334155;
+}
+
+.mobile-money {
+  display: block;
+  margin-top: 7px;
+  font-size: 13px;
+}
+
+.mobile-primary-action,
+.mobile-secondary-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 11px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.mobile-secondary-action {
+  border: 1px solid #dbe2ea;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.mobile-text-link {
+  display: block;
+  width: fit-content;
+  min-height: 32px;
+  margin: 8px auto -6px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 32px;
+  text-decoration: none;
+}
+
+.mobile-sales-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mobile-sales-metrics span {
+  padding: 9px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.mobile-sales-metrics strong {
+  display: block;
+  margin-top: 3px;
+  color: #0f172a;
+  font-size: 12px;
+}
+
+.mobile-lag {
+  color: #b45309;
+  font-size: 12px;
+}
+
+.mobile-note-editor {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mobile-note-editor select,
+.mobile-note-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  font: inherit;
+}
+
+.mobile-note-editor textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.mobile-note-editor small {
+  color: #64748b;
+}
+
+.mobile-data-state,
+.mobile-empty {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 15px;
+  border: 1px solid #bfdbfe;
+  border-radius: 13px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+}
+
+.mobile-data-state.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.mobile-empty {
+  place-items: center;
+  min-height: 120px;
+  border-style: dashed;
+  color: #64748b;
+  text-align: center;
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.mobile-bottom-nav button {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.mobile-bottom-nav button span {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.mobile-bottom-nav button.is-active {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+@media (min-width: 768px) {
+  .mobile-app {
+    display: none;
+  }
+}
