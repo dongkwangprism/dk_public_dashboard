@@ -72,7 +72,9 @@
 
 ```text
 React/Vite frontend (:5174)
-  ├─ GET Worker?endpoint=...&keyword=...
+  ├─ production: GET Pages /api/proxy?endpoint=...&keyword=...
+  │    └─ server-side forward → Worker
+  ├─ local dev: GET Worker?endpoint=...&keyword=...
   │    └─ data.go.kr 조달청 API / 지방재정365
   └─ GET /delivery.json (탭 4 진입 시 지연 로드)
        └─ pipeline 이 생성한 정적 snapshot

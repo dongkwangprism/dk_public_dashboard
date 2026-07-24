@@ -61,6 +61,10 @@ cp .env.example .env
 VITE_API_BASE_URL=http://localhost:8787
 ```
 
+프로덕션에서는 브라우저가 `workers.dev`를 직접 호출하지 않는다. Cloudflare Pages
+Function의 동일 출처 `/api/proxy`를 우선 사용하고, `VITE_API_BASE_URL`은 네트워크
+폴백 주소로 유지한다.
+
 ## Worker 실행
 
 ```bash

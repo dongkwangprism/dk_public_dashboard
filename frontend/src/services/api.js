@@ -1,8 +1,12 @@
-const API_BASE_URLS = import.meta.env.VITE_API_BASE_URL
-  ? [import.meta.env.VITE_API_BASE_URL]
-  : import.meta.env.DEV
-    ? ["http://localhost:8787", "http://localhost:8788"]
-    : [""];
+import {
+  resolveApiBaseUrls,
+  shouldFallbackToNextBaseUrl,
+} from "./apiBaseUrls.js";
+
+const API_BASE_URLS = resolveApiBaseUrls({
+  configuredBaseUrl: import.meta.env.VITE_API_BASE_URL,
+  dev: import.meta.env.DEV,
+});
 const API_ACCESS_TOKEN = import.meta.env.VITE_API_ACCESS_TOKEN || "";
 
 const ENDPOINT_DEFAULTS = {
@@ -73,6 +77,10 @@ async function fetchWorkerPath(path, init = {}) {
       return res.json();
     } catch (error) {
       if (error instanceof ApiResponseError) {
+        if (shouldFallbackToNextBaseUrl(baseUrl, error.status)) {
+          lastError = error;
+          continue;
+        }
         preferredBaseUrl = baseUrl;
         throw error;
       }
@@ -102,6 +110,10 @@ async function fetchJsonWithFallback(endpoint, params) {
       return res.json();
     } catch (error) {
       if (error instanceof ApiResponseError) {
+        if (shouldFallbackToNextBaseUrl(baseUrl, error.status)) {
+          lastError = error;
+          continue;
+        }
         // 서버가 응답한 것이므로 연결 자체는 유효한 주소다
         preferredBaseUrl = baseUrl;
         throw error;
