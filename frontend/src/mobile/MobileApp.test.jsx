@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
+import fs from "node:fs";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MobileApp } from "./MobileApp.jsx";
@@ -61,5 +62,11 @@ describe("MobileApp", () => {
     expect(screen.getByText("흡연부스 제작 설치")).toBeTruthy();
     expect(screen.getByRole("button", { name: "투찰 분석" })).toBeTruthy();
     expect(container.querySelector("table")).toBeNull();
+  });
+
+  it("removes the loading root padding only while mobile UI is mounted", () => {
+    const css = fs.readFileSync("src/mobile/mobile.css", "utf8");
+    expect(css).toContain("body:has(.mobile-app) #root");
+    expect(css).toMatch(/body:has\(\.mobile-app\) #root\s*\{[^}]*padding:\s*0/s);
   });
 });

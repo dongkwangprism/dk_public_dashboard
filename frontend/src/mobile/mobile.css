@@ -8,6 +8,12 @@ body:has(.mobile-app) {
   overscroll-behavior-y: none;
 }
 
+body:has(.mobile-app) #root {
+  padding: 0 !important;
+  color: inherit !important;
+  font-family: inherit !important;
+}
+
 .mobile-app {
   min-height: 100dvh;
   background: #f5f7fb;
