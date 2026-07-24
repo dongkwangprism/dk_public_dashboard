@@ -5,6 +5,7 @@ import {
   mobileDdayTone,
   normalizeMobileTab,
 } from "./mobileUtils.js";
+import { MobileBidSheet } from "./MobileBidSheet.jsx";
 import "./mobile.css";
 
 const MOBILE_TABS = [
@@ -33,11 +34,22 @@ export function MobileApp({
   loading = false,
   onRefresh,
   onAnalyze,
+  selectedBid = null,
+  onCloseAnalysis = () => {},
+  analysisPending = false,
+  analyzeBid = () => null,
+  companyHistory = [],
+  onRecordBid = () => {},
   salesNotes,
 }) {
+  const [floorRate, setFloorRate] = useState("87.995");
   const safeTab = normalizeMobileTab(tab);
   const urgentCount = (data.bids || []).filter((row) => row.openDday <= 3).length;
   const title = MOBILE_TABS.find((item) => item.id === safeTab)?.label || "공고";
+  const bidAnalysis = useMemo(
+    () => selectedBid ? analyzeBid(selectedBid, Number(floorRate)) : null,
+    [selectedBid, analyzeBid, floorRate]
+  );
 
   return (
     <div className="mobile-app">
@@ -106,6 +118,19 @@ export function MobileApp({
           </button>
         ))}
       </nav>
+
+      {selectedBid && bidAnalysis && (
+        <MobileBidSheet
+          bid={selectedBid}
+          analysis={bidAnalysis}
+          pending={analysisPending}
+          floorRate={floorRate}
+          onFloorRateChange={setFloorRate}
+          onClose={onCloseAnalysis}
+          onRecord={(draft) => onRecordBid(selectedBid, draft)}
+          companyHistory={companyHistory}
+        />
+      )}
     </div>
   );
 }

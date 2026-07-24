@@ -168,6 +168,7 @@ function App() {
   const [deliveryError, setDeliveryError] = useState("");
   const [deliveryLoaded, setDeliveryLoaded] = useState(false);
   const [selectedAnalysisBid, setSelectedAnalysisBid] = useState(null);
+  const [mobileMyBids, setMobileMyBids] = useStoredState("g2b-my-bids", []);
   // 영업 메모는 탭을 옮겨도 유지되도록 App에서 한 번만 불러온다
   const salesNotes = useSharedSalesNotes();
   const [staleEndpoints, setStaleEndpoints] = useState({}); // { endpoint: 원본 수신 시각 } — 만료 캐시로 채워진 endpoint
@@ -520,6 +521,12 @@ function App() {
   }, [isMobile, tab]);
 
   if (isMobile) {
+    const mobileCompanyHistory = selectedAnalysisBid
+      ? mobileMyBids
+        .filter((item) => item.company === safeCompanyId
+          && (item.org ? organizationsMatch(item.org, selectedAnalysisBid.org) : item.bidNo === selectedAnalysisBid.bidNo))
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+      : [];
     return (
       <MobileApp
         companyId={safeCompanyId}
@@ -534,6 +541,24 @@ function App() {
         onAnalyze={(row) => {
           setSelectedAnalysisBid(row);
           window.setTimeout(() => loadData({ endpoints: ["awards"] }), 0);
+        }}
+        selectedBid={selectedAnalysisBid}
+        onCloseAnalysis={() => setSelectedAnalysisBid(null)}
+        analysisPending={fetchingEndpoints.includes("awards")}
+        analyzeBid={(bid, floorRate) => analyzeBidOpportunity(bid, data.awardsRaw, floorRate)}
+        companyHistory={mobileCompanyHistory}
+        onRecordBid={(bid, draft) => {
+          setMobileMyBids([...mobileMyBids, {
+            bidNo: bid.bidNo,
+            bidName: bid.name,
+            org: bid.org,
+            item: bid.item || bid.name,
+            basePrice: bid.budget,
+            myPrice: draft.myPrice,
+            result: draft.result,
+            company: safeCompanyId,
+            createdAt: new Date().toISOString().slice(0, 10),
+          }]);
         }}
         salesNotes={salesNotes}
       />
